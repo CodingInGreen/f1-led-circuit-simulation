@@ -49,7 +49,7 @@ impl App for PlotApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             for coord in &self.coordinates {
                 let norm_x = ((coord.x - min_x) / width) as f32 * ui.available_width();
-                let norm_y = ((coord.y - min_y) / height) as f32 * ui.available_height();
+                let norm_y = ui.available_height() - (((coord.y - min_y) / height) as f32 * ui.available_height());
 
                 painter.rect_filled(
                     egui::Rect::from_min_size(
@@ -71,7 +71,7 @@ fn main() -> eframe::Result<()> {
 
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
-        "LED Coordinates",
+        "LEDS",
         native_options,
         Box::new(|_cc| Box::new(app)),
     )
