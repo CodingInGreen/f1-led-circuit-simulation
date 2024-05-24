@@ -119,7 +119,8 @@ impl App for PlotApp {
                 for i in 0..self.current_index {
                     if self.run_race_data[i].x_led == coord.x && self.run_race_data[i].y_led == coord.y {
                         color = egui::Color32::GREEN;
-                        break;
+                    } else {
+                        color = egui::Color32::BLACK;
                     }
                 }
 
