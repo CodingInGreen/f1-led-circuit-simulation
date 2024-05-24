@@ -2,12 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use csv::ReaderBuilder;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+use serde::de::Error as SerdeError;
 use eframe::{egui, App, Frame};
 use std::error::Error;
 use std::time::{Duration, Instant};
-use rand::Rng;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, TimeZone};
 
 #[derive(Debug, Deserialize)]
 struct LedCoordinate {
@@ -15,11 +15,36 @@ struct LedCoordinate {
     y: f64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 struct RunRace {
     timestamp: DateTime<Utc>,
     x_led: f64,
     y_led: f64,
+}
+
+// Custom deserialization for RunRace to handle DateTime
+impl<'de> Deserialize<'de> for RunRace {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct RunRaceHelper {
+            timestamp: String,
+            x_led: f64,
+            y_led: f64,
+        }
+
+        let helper = RunRaceHelper::deserialize(deserializer)?;
+        let timestamp = Utc.datetime_from_str(&helper.timestamp, "%+")
+            .map_err(SerdeError::custom)?;
+
+        Ok(RunRace {
+            timestamp,
+            x_led: helper.x_led,
+            y_led: helper.y_led,
+        })
+    }
 }
 
 fn read_coordinates(file_path: &str) -> Result<Vec<LedCoordinate>, Box<dyn Error>> {
@@ -93,12 +118,7 @@ impl App for PlotApp {
 
                 for i in 0..self.current_index {
                     if self.run_race_data[i].x_led == coord.x && self.run_race_data[i].y_led == coord.y {
-                        let mut rng = rand::thread_rng();
-                        color = egui::Color32::from_rgb(
-                            rng.gen_range(0..=255),
-                            rng.gen_range(0..=255),
-                            rng.gen_range(0..=255),
-                        );
+                        color = egui::Color32::GREEN;
                         break;
                     }
                 }
