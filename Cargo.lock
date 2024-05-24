@@ -629,6 +629,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-targets 0.52.5",
 ]
@@ -1125,6 +1126,7 @@ dependencies = [
  "egui_plot",
  "env_logger",
  "log",
+ "rand",
  "serde",
  "wasm-bindgen-futures",
 ]
