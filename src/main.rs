@@ -67,6 +67,13 @@ impl PlotApp {
             race_started: false,
         }
     }
+
+    fn reset(&mut self) {
+        self.start_time = Instant::now();
+        self.start_datetime = Utc::now();
+        self.current_index = 0;
+        self.race_started = false;
+    }
 }
 
 impl App for PlotApp {
@@ -99,6 +106,9 @@ impl App for PlotApp {
                 self.start_time = Instant::now();
                 self.start_datetime = Utc::now();
                 self.current_index = 0;
+            }
+            if ui.button("STOP").clicked() {
+                self.reset();
             }
         });
 
