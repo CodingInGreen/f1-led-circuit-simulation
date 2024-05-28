@@ -143,6 +143,8 @@ impl App for PlotApp {
                     if let Some(run_data) = self.run_race_data.get(i) {
                         if run_data.x_data == coord.x_led && run_data.y_data == coord.y_led {
                             color = egui::Color32::GREEN;
+                        } else {
+                            color = egui::Color32::BLACK;
                         }
                     }
                 }
