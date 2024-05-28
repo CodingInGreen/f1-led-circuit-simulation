@@ -47,13 +47,13 @@ impl<'de> Deserialize<'de> for RunRace {
     }
 }
 
-
 struct PlotApp {
     coordinates: Vec<LedCoordinate>,
     run_race_data: Vec<RunRace>,
     start_time: Instant,
     start_datetime: DateTime<Utc>,
     current_index: usize,
+    race_started: bool,
 }
 
 impl PlotApp {
@@ -64,6 +64,7 @@ impl PlotApp {
             start_time: Instant::now(),
             start_datetime: Utc::now(),
             current_index: 0,
+            race_started: false,
         }
     }
 }
@@ -82,13 +83,24 @@ impl App for PlotApp {
         let width = max_x - min_x;
         let height = max_y - min_y;
 
-        let current_time = self.start_datetime + Duration::from_secs(self.start_time.elapsed().as_secs());
+        if self.race_started {
+            let current_time = self.start_datetime + Duration::from_secs(self.start_time.elapsed().as_secs());
 
-        if self.current_index < self.run_race_data.len() {
-            if current_time >= self.run_race_data[self.current_index].timestamp {
-                self.current_index += 1;
+            if self.current_index < self.run_race_data.len() {
+                if current_time >= self.run_race_data[self.current_index].timestamp {
+                    self.current_index += 1;
+                }
             }
         }
+
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            if ui.button("START").clicked() {
+                self.race_started = true;
+                self.start_time = Instant::now();
+                self.start_datetime = Utc::now();
+                self.current_index = 0;
+            }
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             for coord in &self.coordinates {
@@ -134,7 +146,6 @@ fn main() -> eframe::Result<()> {
         Box::new(|_cc| Box::new(app)),
     )
 }
-
 
 fn read_coordinates(file_path: &str) -> Result<Vec<LedCoordinate>, Box<dyn Error>> {
     let mut rdr = ReaderBuilder::new().from_path(file_path)?;
