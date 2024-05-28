@@ -101,15 +101,17 @@ impl App for PlotApp {
         }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            if ui.button("START").clicked() {
-                self.race_started = true;
-                self.start_time = Instant::now();
-                self.start_datetime = Utc::now();
-                self.current_index = 0;
-            }
-            if ui.button("STOP").clicked() {
-                self.reset();
-            }
+            ui.horizontal(|ui| {
+                if ui.button("START").clicked() {
+                    self.race_started = true;
+                    self.start_time = Instant::now();
+                    self.start_datetime = Utc::now();
+                    self.current_index = 0;
+                }
+                if ui.button("STOP").clicked() {
+                    self.reset();
+                }
+            });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
