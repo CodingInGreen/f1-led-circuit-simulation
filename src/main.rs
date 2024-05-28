@@ -20,6 +20,7 @@ struct RunRace {
     timestamp: DateTime<Utc>,
     x_data: f64,
     y_data: f64,
+    time_delta: u64, // New field to hold the time delta
 }
 
 // Custom deserialization for RunRace to handle DateTime
@@ -33,6 +34,7 @@ impl<'de> Deserialize<'de> for RunRace {
             timestamp: String,
             x_data: f64,
             y_data: f64,
+            time_delta: u64, // Deserialize time_delta from CSV
         }
 
         let helper = RunRaceHelper::deserialize(deserializer)?;
@@ -43,6 +45,7 @@ impl<'de> Deserialize<'de> for RunRace {
             timestamp,
             x_data: helper.x_data,
             y_data: helper.y_data,
+            time_delta: helper.time_delta,
         })
     }
 }
@@ -54,18 +57,22 @@ struct PlotApp {
     start_datetime: DateTime<Utc>,
     current_index: usize,
     race_started: bool,
+    next_update_time: DateTime<Utc>, // New field to hold the next update time
 }
 
 impl PlotApp {
     fn new(coordinates: Vec<LedCoordinate>, run_race_data: Vec<RunRace>) -> Self {
-        Self {
+        let mut app = Self {
             coordinates,
             run_race_data,
             start_time: Instant::now(),
             start_datetime: Utc::now(),
             current_index: 0,
             race_started: false,
-        }
+            next_update_time: Utc::now(), // Initialize next_update_time
+        };
+        app.calculate_next_update_time(); // Calculate initial next_update_time
+        app
     }
 
     fn reset(&mut self) {
@@ -73,6 +80,13 @@ impl PlotApp {
         self.start_datetime = Utc::now();
         self.current_index = 0;
         self.race_started = false;
+        self.calculate_next_update_time(); // Calculate next_update_time after reset
+    }
+
+    fn calculate_next_update_time(&mut self) {
+        if let Some(run_data) = self.run_race_data.get(self.current_index) {
+            self.next_update_time = Utc::now() + Duration::from_millis(run_data.time_delta);
+        }
     }
 }
 
@@ -91,14 +105,17 @@ impl App for PlotApp {
         let height = max_y - min_y;
 
         if self.race_started {
-            let current_time = self.start_datetime + Duration::from_secs(self.start_time.elapsed().as_secs());
+            let current_time = Utc::now();
 
-            if self.current_index < self.run_race_data.len() {
-                if current_time >= self.run_race_data[self.current_index].timestamp {
+            if let Some(run_data) = self.run_race_data.get(self.current_index) {
+                if current_time >= self.next_update_time {
                     self.current_index += 1;
+                    self.calculate_next_update_time(); // Calculate next update time for the next data point
                 }
             }
         }
+
+
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -107,6 +124,7 @@ impl App for PlotApp {
                     self.start_time = Instant::now();
                     self.start_datetime = Utc::now();
                     self.current_index = 0;
+                    self.calculate_next_update_time(); // Calculate next update time when race starts
                 }
                 if ui.button("STOP").clicked() {
                     self.reset();
@@ -116,16 +134,16 @@ impl App for PlotApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             for coord in &self.coordinates {
+                // Draw LEDs based on coordinates
                 let norm_x = ((coord.x_led - min_x) / width) as f32 * ui.available_width();
                 let norm_y = ui.available_height() - (((coord.y_led - min_y) / height) as f32 * ui.available_height());
-
                 let mut color = egui::Color32::BLACK;
 
                 for i in 0..self.current_index {
-                    if self.run_race_data[i].x_data == coord.x_led && self.run_race_data[i].y_data == coord.y_led {
-                        color = egui::Color32::GREEN;
-                    } else {
-                        color = egui::Color32::BLACK;
+                    if let Some(run_data) = self.run_race_data.get(i) {
+                        if run_data.x_data == coord.x_led && run_data.y_data == coord.y_led {
+                            color = egui::Color32::GREEN;
+                        }
                     }
                 }
 
@@ -147,7 +165,7 @@ impl App for PlotApp {
 
 fn main() -> eframe::Result<()> {
     let coordinates = read_coordinates("led_coords.csv").expect("Error reading CSV");
-    let run_race_data = read_race_data("race_data.csv").expect("Error reading CSV");
+    let run_race_data = read_race_data("modified_race_data.csv").expect("Error reading CSV");
 
     let app = PlotApp::new(coordinates, run_race_data);
 
