@@ -115,6 +115,9 @@ impl App for PlotApp {
                 );
             }
         });
+
+        // Request a repaint to ensure continuous updates
+        ctx.request_repaint();
     }
 }
 
