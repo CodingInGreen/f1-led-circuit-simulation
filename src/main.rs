@@ -11,15 +11,15 @@ use chrono::{DateTime, Utc, TimeZone};
 
 #[derive(Debug, Deserialize)]
 struct LedCoordinate {
-    x: f64,
-    y: f64,
+    x_led: f64,
+    y_led: f64,
 }
 
 #[derive(Debug)]
 struct RunRace {
     timestamp: DateTime<Utc>,
-    x_led: f64,
-    y_led: f64,
+    x_data: f64,
+    y_data: f64,
 }
 
 // Custom deserialization for RunRace to handle DateTime
@@ -31,8 +31,8 @@ impl<'de> Deserialize<'de> for RunRace {
         #[derive(Deserialize)]
         struct RunRaceHelper {
             timestamp: String,
-            x_led: f64,
-            y_led: f64,
+            x_data: f64,
+            y_data: f64,
         }
 
         let helper = RunRaceHelper::deserialize(deserializer)?;
@@ -41,31 +41,12 @@ impl<'de> Deserialize<'de> for RunRace {
 
         Ok(RunRace {
             timestamp,
-            x_led: helper.x_led,
-            y_led: helper.y_led,
+            x_data: helper.x_data,
+            y_data: helper.y_data,
         })
     }
 }
 
-fn read_coordinates(file_path: &str) -> Result<Vec<LedCoordinate>, Box<dyn Error>> {
-    let mut rdr = ReaderBuilder::new().from_path(file_path)?;
-    let mut coordinates = Vec::new();
-    for result in rdr.deserialize() {
-        let record: LedCoordinate = result?;
-        coordinates.push(record);
-    }
-    Ok(coordinates)
-}
-
-fn read_run_race(file_path: &str) -> Result<Vec<RunRace>, Box<dyn Error>> {
-    let mut rdr = ReaderBuilder::new().from_path(file_path)?;
-    let mut run_race_data = Vec::new();
-    for result in rdr.deserialize() {
-        let record: RunRace = result?;
-        run_race_data.push(record);
-    }
-    Ok(run_race_data)
-}
 
 struct PlotApp {
     coordinates: Vec<LedCoordinate>,
@@ -92,10 +73,10 @@ impl App for PlotApp {
         let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("my_layer")));
 
         let (min_x, max_x) = self.coordinates.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), coord| {
-            (min.min(coord.x), max.max(coord.x))
+            (min.min(coord.x_led), max.max(coord.x_led))
         });
         let (min_y, max_y) = self.coordinates.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), coord| {
-            (min.min(coord.y), max.max(coord.y))
+            (min.min(coord.y_led), max.max(coord.y_led))
         });
 
         let width = max_x - min_x;
@@ -111,13 +92,13 @@ impl App for PlotApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             for coord in &self.coordinates {
-                let norm_x = ((coord.x - min_x) / width) as f32 * ui.available_width();
-                let norm_y = ui.available_height() - (((coord.y - min_y) / height) as f32 * ui.available_height());
+                let norm_x = ((coord.x_led - min_x) / width) as f32 * ui.available_width();
+                let norm_y = ui.available_height() - (((coord.y_led - min_y) / height) as f32 * ui.available_height());
 
                 let mut color = egui::Color32::BLACK;
 
                 for i in 0..self.current_index {
-                    if self.run_race_data[i].x_led == coord.x && self.run_race_data[i].y_led == coord.y {
+                    if self.run_race_data[i].x_data == coord.x_led && self.run_race_data[i].y_data == coord.y_led {
                         color = egui::Color32::GREEN;
                     } else {
                         color = egui::Color32::BLACK;
@@ -139,14 +120,35 @@ impl App for PlotApp {
 
 fn main() -> eframe::Result<()> {
     let coordinates = read_coordinates("led_coords.csv").expect("Error reading CSV");
-    let run_race_data = read_run_race("run-race.csv").expect("Error reading CSV");
+    let run_race_data = read_race_data("race_data.csv").expect("Error reading CSV");
 
     let app = PlotApp::new(coordinates, run_race_data);
 
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
-        "LEDS",
+        "F1-LED-CIRCUIT SIMULATION",
         native_options,
         Box::new(|_cc| Box::new(app)),
     )
+}
+
+
+fn read_coordinates(file_path: &str) -> Result<Vec<LedCoordinate>, Box<dyn Error>> {
+    let mut rdr = ReaderBuilder::new().from_path(file_path)?;
+    let mut coordinates = Vec::new();
+    for result in rdr.deserialize() {
+        let record: LedCoordinate = result?;
+        coordinates.push(record);
+    }
+    Ok(coordinates)
+}
+
+fn read_race_data(file_path: &str) -> Result<Vec<RunRace>, Box<dyn Error>> {
+    let mut rdr = ReaderBuilder::new().from_path(file_path)?;
+    let mut run_race_data = Vec::new();
+    for result in rdr.deserialize() {
+        let record: RunRace = result?;
+        run_race_data.push(record);
+    }
+    Ok(run_race_data)
 }
