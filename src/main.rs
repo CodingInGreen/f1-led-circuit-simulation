@@ -119,6 +119,14 @@ impl App for PlotApp {
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
+                // Add the timestamp field in the center of the menu bar
+                ui.separator(); // Align items to center
+                if let Some(run_data) = self.run_race_data.get(self.current_index) {
+                    let timestamp_str = run_data.timestamp.format("%H:%M:%S%.3f").to_string();
+                    ui.label(timestamp_str);
+                }
+                ui.separator(); // Align items to center
+        
                 if ui.button("START").clicked() {
                     self.race_started = true;
                     self.start_time = Instant::now();
